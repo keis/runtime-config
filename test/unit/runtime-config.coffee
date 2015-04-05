@@ -10,8 +10,10 @@ describe "Config", ->
     Config.__set__ 'readJson', ->
 
     config = null
+    callback = null
 
     beforeEach ->
+        callback = sinon.stub()
         config = new Config path: 'test/data/runtime.json',
             foo: 10
             arr: [1..3]
@@ -23,133 +25,125 @@ describe "Config", ->
 
     describe "watch", ->
         it "calls watcher with value from base", (done) ->
-            config.watch 'foo', (old, value) ->
-                assert.equal value, 10
+            config.watch 'foo', callback
+            process.nextTick ->
+                assert.calledOnce callback
+                assert.calledWith callback, undefined, 10
                 done()
 
         it "calls watcher with deep value from base", (done) ->
-            config.watch 'bar.baz', (old, value) ->
-                assert.equal value, 'test'
+            config.watch 'bar.baz', callback
+            process.nextTick ->
+                assert.calledOnce callback
+                assert.calledWith callback, undefined, 'test'
                 done()
 
         # Document current behaivour not sure if this is how it should work
         it "calls watcher with undefined for missing value", (done) ->
-            config.watch 'bar.bar', (old, value) ->
-                assert.equal value, undefined
+            config.watch 'bar.bar', callback
+            process.nextTick ->
+                assert.calledOnce callback
+                assert.calledWith callback, undefined, undefined
                 done()
 
         it "calls watcher with undefined for missing parent value", (done) ->
-            config.watch 'baz.baz', (old, value) ->
-                assert.equal value, undefined
+            config.watch 'baz.baz', callback
+            process.nextTick ->
+                assert.calledOnce callback
+                assert.calledWith callback, undefined, undefined
                 done()
 
     describe "update", ->
         it "calls watcher with updated value", (done) ->
-            config.watch 'foo', chain [
-                (old, value) ->
-                    assert.equal value, 10
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.equal value, 20
-                    assert.equal old, 10
-                    done()
-            ]
+            config.watch 'foo', callback
 
             process.nextTick ->
                 config._update null,
                     foo: 20
 
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, 10
+                assert.calledWith callback, 10, 20
+                done()
+
         it "calls watcher with updated array", (done) ->
-            config.watch 'arr', chain [
-                (old, value) ->
-                    assert.deepEqual value, [1..3]
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.deepEqual value, [1..4]
-                    assert.deepEqual old, [1..3]
-                    done()
-            ]
+            config.watch 'arr', callback
 
             process.nextTick ->
                 config._update null,
                     arr: [1..4]
 
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, [1..3]
+                assert.calledWith callback, [1..3], [1..4]
+                done()
+
         it "calls watcher with new value", (done) ->
-            config.watch 'baz', chain [
-                (old, value) ->
-                    assert.equal value, undefined
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.equal value, 50
-                    assert.equal old, undefined
-                    done()
-            ]
+            config.watch 'baz', callback
 
             process.nextTick ->
                 config._update null,
                     baz: 50
 
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, undefined
+                assert.calledWith callback, undefined, 50
+                done()
+
         it "calls watcher with base value when deleted", (done) ->
-            config.watch 'foo', chain [
-                (old, value) ->
-                    assert.equal value, 10
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.equal value, 50
-                    assert.equal old, 10
-                (old, value) ->
-                    assert.equal value, 10
-                    assert.equal old, 50
-                    done()
-            ]
+            config.watch 'foo', callback
 
             process.nextTick ->
                 config._update null,
                     foo: 50
+
+                assert.calledTwice callback
+
                 process.nextTick ->
                     config._update null, {}
 
-        it "calls watcher with updated deep value", (done) ->
-            config.watch 'bar.baz', chain [
-                (old, value) ->
-                    assert.equal value, 'test'
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.equal value, 'other'
-                    assert.equal old, 'test'
+                    assert.calledThrice callback
+                    assert.calledWith callback, 50, 10
                     done()
-            ]
+
+        it "calls watcher with updated deep value", (done) ->
+            config.watch 'bar.baz', callback
 
             process.nextTick ->
                 config._update null,
                     bar:
                         baz: 'other'
+
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, 'test'
+                assert.calledWith callback, 'test', 'other'
+                done()
 
         it "calls watcher of parent object of unhandled value", (done) ->
-            config.watch 'bar', chain [
-                (old, value) ->
-                    assert.deepEqual value, baz: 'test'
-                    assert.equal old, undefined
-                (old, value) ->
-                    assert.deepEqual value, baz: 'other'
-                    assert.deepEqual old, baz: 'test'
-                    done()
-            ]
+            config.watch 'bar', callback
 
             process.nextTick ->
                 config._update null,
                     bar:
                         baz: 'other'
 
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, baz: 'test'
+                assert.calledWith callback, {baz: 'test'}, {baz: 'other'}
+                done()
+
         it "calls all watchers", (done) ->
-            firstCall = secondCall = false
+            callback2 = sinon.stub()
 
-            config.watch 'foo', (old, value) ->
-                assert.equal value, 10
-                firstCall = true
-                done() if secondCall
+            config.watch 'foo', callback
+            config.watch 'foo', callback2
 
-            config.watch 'foo', (old, value) ->
-                assert.equal value, 10
-                secondCall = true
-                done() if firstCall
+            process.nextTick ->
+                config._update null,
+                    foo: 20
+
+                assert.calledTwice callback
+                assert.calledWith callback, 10, 20
+                assert.calledTwice callback2
+                assert.calledWith callback2, 10, 20
+                done()
