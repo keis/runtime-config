@@ -7,15 +7,14 @@ chain = (funs) ->
 describe "Config", ->
     Config = require '../../lib/runtime-config'
 
-    base =
-        foo: 10
-        arr: [1..3]
-        bar:
-            baz: 'test'
     config = null
 
     beforeEach ->
-        config = new Config path: 'test/data/runtime.json', base
+        config = new Config path: 'test/data/runtime.json',
+            foo: 10
+            arr: [1..3]
+            bar:
+                baz: 'test'
 
     afterEach ->
         config.watcher.close()
@@ -96,6 +95,22 @@ describe "Config", ->
                 (old, value) ->
                     assert.equal value, 'other'
                     assert.equal old, 'test'
+                    done()
+            ]
+
+            process.nextTick ->
+                config._update null,
+                    bar:
+                        baz: 'other'
+
+        it "calls watcher of parent object of unhandled value", (done) ->
+            config.watch 'bar', chain [
+                (old, value) ->
+                    assert.deepEqual value, baz: 'test'
+                    assert.equal old, undefined
+                (old, value) ->
+                    assert.deepEqual value, baz: 'other'
+                    assert.deepEqual old, baz: 'test'
                     done()
             ]
 
