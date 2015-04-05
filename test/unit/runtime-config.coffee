@@ -1,11 +1,13 @@
 sinon = require 'sinon'
+rewire = require 'rewire'
 
 chain = (funs) ->
     ->
         funs.shift().apply null, arguments
 
 describe "Config", ->
-    Config = require '../../lib/runtime-config'
+    Config = rewire '../../lib/runtime-config'
+    Config.__set__ 'readJson', ->
 
     config = null
 
@@ -86,6 +88,26 @@ describe "Config", ->
             process.nextTick ->
                 config._update null,
                     baz: 50
+
+        it "calls watcher with base value when deleted", (done) ->
+            config.watch 'foo', chain [
+                (old, value) ->
+                    assert.equal value, 10
+                    assert.equal old, undefined
+                (old, value) ->
+                    assert.equal value, 50
+                    assert.equal old, 10
+                (old, value) ->
+                    assert.equal value, 10
+                    assert.equal old, 50
+                    done()
+            ]
+
+            process.nextTick ->
+                config._update null,
+                    foo: 50
+                process.nextTick ->
+                    config._update null, {}
 
         it "calls watcher with updated deep value", (done) ->
             config.watch 'bar.baz', chain [

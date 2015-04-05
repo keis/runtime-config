@@ -1,4 +1,4 @@
-var Runtime = require('./runtime-json'),
+var Runtime = require('./lib/runtime-config'),
     config = require('config'),
     runtime = new Runtime({}, config);
 
