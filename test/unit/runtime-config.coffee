@@ -17,6 +17,7 @@ describe "Config", ->
         config = new Config path: 'test/data/runtime.json',
             foo: 10
             arr: [1..3]
+            nil: null
             bar:
                 baz: 'test'
 
@@ -117,6 +118,30 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, 'test'
                 assert.calledWith callback, 'test', 'other'
+                done()
+
+        it "calls watcher with new deep value", (done) ->
+            config.watch 'nil.nil', callback
+
+            process.nextTick ->
+                config._update null,
+                    nil:
+                        nil: 'new'
+
+                assert.calledTwice callback
+                assert.calledWith callback, undefined, null
+                assert.calledWith callback, null, 'new'
+                done()
+
+        it "does not call watcher with null to null", (done) ->
+            config.watch 'nil', callback
+
+            process.nextTick ->
+                config._update null,
+                    nil: null
+
+                assert.calledOnce callback
+                assert.calledWith callback, undefined, null
                 done()
 
         it "calls watcher of parent object of unhandled value", (done) ->
