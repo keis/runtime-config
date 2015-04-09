@@ -11,15 +11,17 @@ describe "Config", ->
 
     config = null
     callback = null
+    unexpected = null
 
     beforeEach ->
-        callback = sinon.stub()
         config = new Config path: 'test/data/runtime.json',
             foo: 10
             arr: [1..3]
             nil: null
             bar:
                 baz: 'test'
+        callback = sinon.stub()
+        unexpected = config._unexpected = sinon.stub()
 
     afterEach ->
         config.watcher.close()
@@ -65,6 +67,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, 10
                 assert.calledWith callback, 10, 20
+                assert.notCalled unexpected
                 done()
 
         it "calls watcher with updated array", (done) ->
@@ -77,6 +80,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, [1..3]
                 assert.calledWith callback, [1..3], [1..4]
+                assert.notCalled unexpected
                 done()
 
         it "calls watcher with new value", (done) ->
@@ -89,6 +93,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, undefined
                 assert.calledWith callback, undefined, 50
+                assert.notCalled unexpected
                 done()
 
         it "calls watcher with base value when deleted", (done) ->
@@ -105,6 +110,7 @@ describe "Config", ->
 
                     assert.calledThrice callback
                     assert.calledWith callback, 50, 10
+                    assert.notCalled unexpected
                     done()
 
         it "calls watcher with updated deep value", (done) ->
@@ -118,6 +124,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, 'test'
                 assert.calledWith callback, 'test', 'other'
+                assert.notCalled unexpected
                 done()
 
         it "calls watcher with new deep value", (done) ->
@@ -131,6 +138,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, null
                 assert.calledWith callback, null, 'new'
+                assert.notCalled unexpected
                 done()
 
         it "does not call watcher with null to null", (done) ->
@@ -142,6 +150,7 @@ describe "Config", ->
 
                 assert.calledOnce callback
                 assert.calledWith callback, undefined, null
+                assert.notCalled unexpected
                 done()
 
         it "calls watcher of parent object of unhandled value", (done) ->
@@ -155,6 +164,7 @@ describe "Config", ->
                 assert.calledTwice callback
                 assert.calledWith callback, undefined, baz: 'test'
                 assert.calledWith callback, {baz: 'test'}, {baz: 'other'}
+                assert.notCalled unexpected
                 done()
 
         it "calls all watchers", (done) ->
@@ -171,4 +181,29 @@ describe "Config", ->
                 assert.calledWith callback, 10, 20
                 assert.calledTwice callback2
                 assert.calledWith callback2, 10, 20
+                assert.notCalled unexpected
+                done()
+
+    describe "unexpected", ->
+        it "warns about changes to variable not watched", (done) ->
+            config.watch 'bar', callback
+
+            process.nextTick ->
+                config._update null,
+                    foo: 20
+
+                assert.calledOnce unexpected
+                assert.calledWith unexpected, 'foo'
+                done()
+
+        it "warns about changes to deep variable not watched", (done) ->
+            config.watch 'bar.baz', callback
+
+            process.nextTick ->
+                config._update null,
+                    bar:
+                        bob: 20
+
+                assert.calledOnce unexpected
+                assert.calledWith unexpected, 'bar.bob'
                 done()
