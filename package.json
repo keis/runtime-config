@@ -8,6 +8,7 @@
     "url": "https://github.com/keis/runtime-config.git"
   },
   "scripts": {
+    "lint": "eslint lib test && coffeelint test",
     "test": "mocha --require test/bootstrap.js --compilers coffee:coffee-script/register --recursive test/unit",
     "coverage": "istanbul cover _mocha --report lcovonly -- --require test/bootstrap.js --compilers coffee:coffee-script/register --recursive test/unit",
     "billom": "billom package.json \"$npm_package_name\" > package.html",
@@ -19,9 +20,11 @@
     "billom": "^1.0.2",
     "chai": "^2.2.0",
     "coffee-script": "^1.9.1",
+    "coffeelint": "^1.9.3",
     "config": "^1.9.0",
     "coveralls": "^2.11.2",
     "docco": "^0.7.0",
+    "eslint": "^0.19.0",
     "istanbul": "^0.3.13",
     "js-yaml": "^3.2.3",
     "mocha": "^2.2.1",
