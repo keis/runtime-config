@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "array-union": "^1.0.1",
+    "get-value": "^1.1.3",
     "isobject": "^1.0.0",
     "read-json-file": "^1.0.1"
   }
