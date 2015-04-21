@@ -153,6 +153,19 @@ describe "Config", ->
         assert.notCalled unexpected
         done()
 
+    it "does not call watcher of identical hash", (done) ->
+      config.watch 'bar', callback
+
+      process.nextTick ->
+        assert.calledOnce callback
+        config._update null,
+          bar:
+            baz: 'test'
+
+        assert.calledOnce callback
+        assert.notCalled unexpected
+        done()
+
     it "calls watcher of parent object of unhandled value", (done) ->
       config.watch 'bar', callback
 
